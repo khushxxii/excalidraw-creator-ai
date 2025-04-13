@@ -83,6 +83,50 @@ class ExcalidrawElement:
         return result
 
 
+class Text(ExcalidrawElement):
+    """Text element for Excalidraw"""
+    
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        text: str,
+        font_family: str = "1",
+        font_size: int = 20,
+        text_align: str = "center",
+        vertical_align: str = "middle",
+        **kwargs
+    ):
+        # For text elements, width and height are calculated based on the text content and font size
+        # but we set initial values that will be rendered properly by Excalidraw
+        width = len(text) * (font_size * 0.6)  # Approximate width based on text length
+        height = font_size * 1.2  # Approximate height based on font size
+        
+        # Center the text at the given coordinates
+        x_centered = x - width / 2
+        y_centered = y - height / 2
+        
+        super().__init__(x_centered, y_centered, width, height, "text", **kwargs)
+        
+        self.text = text
+        self.font_family = font_family
+        self.font_size = font_size
+        self.text_align = text_align
+        self.vertical_align = vertical_align
+        self.base_line = 0
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """Override to_dict to include text-specific properties"""
+        result = super().to_dict()
+        result["text"] = self.text
+        result["fontFamily"] = self.font_family
+        result["fontSize"] = self.font_size
+        result["textAlign"] = self.text_align
+        result["verticalAlign"] = self.vertical_align
+        result["baseline"] = self.base_line
+        return result
+
+
 class Rectangle(ExcalidrawElement):
     """Rectangle element for Excalidraw"""
     
@@ -168,6 +212,8 @@ class Arrow(ExcalidrawElement):
         points: List[List[float]],
         start_binding: Optional[Dict] = None,
         end_binding: Optional[Dict] = None,
+        elbowed: bool = True,
+        roundness: Optional[Dict] = None,
         **kwargs
     ):
         # For arrows, width and height are determined by points
@@ -181,7 +227,11 @@ class Arrow(ExcalidrawElement):
         self.end_binding = end_binding
         self.start_arrowhead = None
         self.end_arrowhead = "arrow"
-        self.elbowed = True
+        self.elbowed = elbowed
+        self.roundness = roundness
+        self.fixed_segments = None
+        self.start_is_special = None
+        self.end_is_special = None
         
     def to_dict(self) -> Dict[str, Any]:
         """Override to_dict to include arrow-specific properties"""
@@ -193,9 +243,13 @@ class Arrow(ExcalidrawElement):
         result["startArrowhead"] = self.start_arrowhead
         result["endArrowhead"] = self.end_arrowhead
         result["elbowed"] = self.elbowed
-        result["fixedSegments"] = None
-        result["startIsSpecial"] = None
-        result["endIsSpecial"] = None
+        result["fixedSegments"] = self.fixed_segments
+        result["startIsSpecial"] = self.start_is_special
+        result["endIsSpecial"] = self.end_is_special
+        
+        if self.roundness is not None:
+            result["roundness"] = self.roundness
+            
         return result
 
 
@@ -250,6 +304,42 @@ class ExcalidrawCreator:
         self.add_element(ellipse)
         return ellipse
     
+    def add_text(
+        self,
+        x: float,
+        y: float,
+        text: str,
+        font_family: str = "1",
+        font_size: int = 20,
+        text_align: str = "center",
+        vertical_align: str = "middle",
+        **kwargs
+    ) -> Text:
+        """Add text to the drawing
+        
+        Args:
+            x: X-coordinate of the text center
+            y: Y-coordinate of the text center
+            text: The text content to display
+            font_family: Font family (1=Helvetica, 2=Virgil, 3=Cascadia)
+            font_size: Font size in pixels
+            text_align: Text alignment (left, center, right)
+            vertical_align: Vertical alignment (top, middle, bottom)
+            
+        Returns:
+            The created Text element
+        """
+        text_element = Text(
+            x, y, text, 
+            font_family=font_family,
+            font_size=font_size,
+            text_align=text_align,
+            vertical_align=vertical_align,
+            **kwargs
+        )
+        self.add_element(text_element)
+        return text_element
+    
     def add_line(
         self,
         x1: float,
@@ -272,6 +362,62 @@ class ExcalidrawCreator:
     ) -> Arrow:
         """Add an arrow to the drawing"""
         arrow = Arrow(x, y, points, **kwargs)
+        self.add_element(arrow)
+        return arrow
+    
+    def add_curved_arrow(
+        self,
+        x: float,
+        y: float,
+        points: List[List[float]],
+        start_element: Optional[ExcalidrawElement] = None,
+        end_element: Optional[ExcalidrawElement] = None,
+        start_binding_gap: float = 1.0,
+        end_binding_gap: float = 1.0,
+        **kwargs
+    ) -> Arrow:
+        """Add a curved arrow to the drawing
+        
+        Args:
+            x: X-coordinate of arrow start
+            y: Y-coordinate of arrow start
+            points: List of points defining the arrow path
+            start_element: Optional element to bind the start of the arrow to
+            end_element: Optional element to bind the end of the arrow to
+            start_binding_gap: Gap from the start element
+            end_binding_gap: Gap from the end element
+            
+        Returns:
+            The created Arrow element
+        """
+        # Create bindings if elements are provided
+        start_binding = None
+        end_binding = None
+        
+        if start_element:
+            start_binding = {
+                "elementId": start_element.id,
+                "focus": 0.5,
+                "gap": start_binding_gap
+            }
+            
+        if end_element:
+            end_binding = {
+                "elementId": end_element.id,
+                "focus": 0.5,
+                "gap": end_binding_gap
+            }
+        
+        # Create curved arrow with roundness
+        arrow = Arrow(
+            x, y, points,
+            start_binding=start_binding,
+            end_binding=end_binding,
+            elbowed=False,  # Non-elbowed for curved arrows
+            roundness={"type": 2},  # Rounded corners
+            **kwargs
+        )
+        
         self.add_element(arrow)
         return arrow
     
@@ -316,6 +462,63 @@ class ExcalidrawCreator:
             start_x, 
             start_y, 
             points, 
+            start_binding=start_binding,
+            end_binding=end_binding,
+            **kwargs
+        )
+    
+    def connect_elements_with_curved_arrow(
+        self,
+        start_element: ExcalidrawElement,
+        end_element: ExcalidrawElement,
+        control_point_offset_x: float = -30,
+        control_point_offset_y: float = 20,
+        **kwargs
+    ) -> Arrow:
+        """Connect two elements with a curved arrow
+        
+        Args:
+            start_element: The element to start the arrow from
+            end_element: The element to end the arrow at
+            control_point_offset_x: X offset for the control point from start point
+            control_point_offset_y: Y offset for the control point from start point
+            
+        Returns:
+            The created Arrow element
+        """
+        # Calculate positions
+        start_x = start_element.x + start_element.width / 2
+        start_y = start_element.y + start_element.height
+        
+        end_x = end_element.x + end_element.width / 2
+        end_y = end_element.y
+        
+        # Create curved path with a control point
+        points = [
+            [0, 0],  # Start point (relative to arrow x,y)
+            [control_point_offset_x, control_point_offset_y],  # Control point
+            [end_x - start_x, end_y - start_y]  # End point
+        ]
+        
+        # Create bindings to the start and end elements
+        start_binding = {
+            "elementId": start_element.id,
+            "focus": 0.5,
+            "gap": 4
+        }
+        
+        end_binding = {
+            "elementId": end_element.id,
+            "focus": 0.5,
+            "gap": 9
+        }
+        
+        return self.add_curved_arrow(
+            start_x, 
+            start_y, 
+            points, 
+            start_element=start_element,
+            end_element=end_element,
             start_binding=start_binding,
             end_binding=end_binding,
             **kwargs
@@ -425,6 +628,19 @@ if __name__ == "__main__":
         opacity=90
     )
     
+    # Add some text
+    text1 = drawing.add_text(
+        250, 450, "Example Drawing",
+        font_size=24,
+        stroke_color="#1e1e1e"
+    )
+    
+    text2 = drawing.add_text(
+        250, 480, "Created with ExcalidrawCreator",
+        font_size=16,
+        stroke_color="#1e1e1e"
+    )
+    
     # Connect elements with arrows
     arrow1 = drawing.connect_elements_with_arrow(
         rect1, rect2,
@@ -438,6 +654,14 @@ if __name__ == "__main__":
         stroke_color="#c92a2a",
         background_color="#ffc9c9",
         stroke_width=3
+    )
+    
+    # Add a curved arrow similar to the special one in the flowchart
+    curved_arrow = drawing.connect_elements_with_curved_arrow(
+        rect1, diamond1,
+        stroke_color="#1e1e1e",
+        stroke_width=3,
+        roughness=1
     )
     
     # Save the drawing to a file
