@@ -7,6 +7,17 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from agents import Agent, Runner, function_tool
 
+# Import prompts
+from prompts import (
+    PLANNER_INSTRUCTIONS,
+    CODE_GENERATOR_INSTRUCTIONS,
+    MAIN_AGENT_INSTRUCTIONS,
+    ANALYSIS_PLAN_TEMPLATE,
+    CODE_GEN_TEMPLATE_WITH_PLAN,
+    CODE_GEN_TEMPLATE_WITHOUT_PLAN,
+    AVAILABLE_EXAMPLES
+)
+
 # Load environment variables
 load_dotenv()
 
@@ -35,34 +46,14 @@ async def analyze_and_plan(description: str) -> str:
     # Create a thinking agent to break down the request
     thinking_agent = Agent(
         name="ExcalidrawPlanner",
-        instructions="""
-        You are an analytical assistant that breaks down complex drawing tasks into simpler components.
-        
-        When given a description of something to draw, your job is to:
-        1. Identify all the main elements that need to be drawn
-        2. For each element, list the appropriate Excalidraw shapes to use
-        3. Consider the spatial relationships and connections between elements
-        4. Create a step-by-step plan for implementing the drawing
-        5. Suggest appropriate colors, styles, and effects
-        
-        Be thorough but concise in your analysis.
-        """,
+        instructions=PLANNER_INSTRUCTIONS,
         model="gpt-4o",
     )
     
     # Generate the plan
     plan_result = await Runner.run(
         thinking_agent,
-        input=f"""
-        I need to create an Excalidraw diagram of: {description}
-        
-        Please break this down into:
-        1. Main elements to draw
-        2. Appropriate shapes for each element
-        3. Spatial layout and relationships
-        4. Color scheme and styling recommendations
-        5. Step-by-step implementation plan
-        """
+        input=ANALYSIS_PLAN_TEMPLATE.format(description=description)
     )
     
     return plan_result.final_output
@@ -83,75 +74,22 @@ async def generate_python_script(description: str, script_name: str, plan: Optio
     """
     try:
         # Prepare the input with the plan if provided
-        code_gen_input = f"""Generate Python code that uses the ExcalidrawCreator to draw: {description}
-        
-        The code should:
-        1. Import the ExcalidrawCreator module using: from excalidraw_creator import ExcalidrawCreator
-        2. Create the appropriate elements based on the description
-        3. Save the result to a file named '{script_name}.excalidraw'
-        4. Be well-commented and easy to understand
-        
-        IMPORTANT: Return only the raw Python code without any markdown formatting or code block delimiters.
-        DO NOT include ```python or ``` tags in your response."""
-        
         if plan:
-            code_gen_input = f"""Generate Python code that uses the ExcalidrawCreator to draw: {description}
-            
-            Here's a structured plan to follow:
-            {plan}
-            
-            The code should:
-            1. Import the ExcalidrawCreator module using: from excalidraw_creator import ExcalidrawCreator
-            2. Create the appropriate elements based on the plan above
-            3. Save the result to a file named '{script_name}.excalidraw'
-            4. Be well-commented and easy to understand
-            
-            IMPORTANT: Return only the raw Python code without any markdown formatting or code block delimiters.
-            DO NOT include ```python or ``` tags in your response."""
+            code_gen_input = CODE_GEN_TEMPLATE_WITH_PLAN.format(
+                description=description,
+                plan=plan,
+                script_name=script_name
+            )
+        else:
+            code_gen_input = CODE_GEN_TEMPLATE_WITHOUT_PLAN.format(
+                description=description,
+                script_name=script_name
+            )
         
         # Use another agent to generate the Python code
         code_gen_agent = Agent(
             name="ExcalidrawCodeGenerator",
-            instructions="""
-            You are an expert Python programmer specializing in creating Excalidraw diagrams.
-            
-            Your job is to generate Python code that uses the ExcalidrawCreator class to create 
-            Excalidraw diagrams based on natural language descriptions.
-            
-            IMPORTANT: You must use the following import statement EXACTLY:
-            ```
-            from excalidraw_creator import ExcalidrawCreator
-            ```
-            
-            The ExcalidrawCreator has these main methods:
-            - add_rectangle(x, y, width, height, **kwargs)
-            - add_ellipse(x, y, width, height, **kwargs)
-            - add_diamond(x, y, width, height, **kwargs)
-            - add_line(x1, y1, x2, y2, **kwargs)
-            - add_arrow(x, y, points, **kwargs)
-            - connect_elements_with_arrow(start_element, end_element, **kwargs)
-            - save(filename): Saves the drawing to a file
-            
-            All elements support these common parameters:
-            - stroke_color: Color of the outline (e.g., "#1e1e1e")
-            - background_color: Fill color (e.g., "#f8d8b9")
-            - fill_style: "solid", "hachure", "cross-hatch"
-            - stroke_width: Line thickness (e.g., 2)
-            - stroke_style: "solid", "dashed", "dotted"
-            - roughness: 0 (smooth) to 2 (rough)
-            - opacity: 0-100 (percentage)
-            - angle: Rotation in radians
-            
-            To create a drawing, you would typically:
-            1. Create an instance: drawing = ExcalidrawCreator()
-            2. Add elements: rect = drawing.add_rectangle(...)
-            3. Save the result: drawing.save("filename.excalidraw")
-            
-            If provided with a structured plan, follow it closely to implement the drawing.
-            
-            IMPORTANT: Provide complete, working Python code WITHOUT any markdown formatting or code block delimiters.
-            Do NOT include ```python or ``` tags in your response - just provide the raw code.
-            """,
+            instructions=CODE_GENERATOR_INSTRUCTIONS,
             model="gpt-4o",
         )
         
@@ -205,40 +143,14 @@ async def list_available_excalidraw_examples() -> str:
     Returns:
         A description of available example diagrams
     """
-    return """
-    Here are some examples of what you can create:
-    
-    1. Basic shapes: Rectangles, ellipses, diamonds, lines, and arrows with various styles and colors
-    2. Flowcharts: Connected boxes showing a process flow
-    3. Diagrams: Technical diagrams with labeled components
-    4. People: Stick figures or cartoon-style people in various poses
-    5. Scenes: Simple scenes with multiple elements (like a house with trees)
-    6. Mind maps: Connected concepts with a central idea
-    
-    For each, you can customize colors, sizes, positions, and styles.
-    """
+    return AVAILABLE_EXAMPLES
 
 
 class ExcalidrawAgentRunner:
     def __init__(self):
         self.agent = Agent(
             name="ExcalidrawCreator",
-            instructions="""
-            You are an assistant that helps users create Excalidraw diagrams from natural language descriptions.
-            
-            You can generate Python scripts that use the ExcalidrawCreator library to create diagrams based on
-            the user's description. Your goal is to accurately interpret what the user wants to draw and 
-            create a Python script that will generate the appropriate Excalidraw file.
-            
-            IMPORTANT: Always follow this process when handling a request:
-            1. FIRST, use the analyze_and_plan tool to break down the drawing request into a clear plan
-            2. THEN, use the generate_python_script tool with both the description and the plan
-            
-            This two-step approach ensures that even complex drawings are properly structured.
-            For simple requests, the plan can be brief but should still identify the main elements.
-            
-            When users provide a description, first clarify if necessary, then follow the process above.
-            """,
+            instructions=MAIN_AGENT_INSTRUCTIONS,
             tools=[analyze_and_plan, generate_python_script, list_available_excalidraw_examples],
             model="gpt-4o",
         )
