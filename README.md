@@ -1,21 +1,19 @@
-# Excalidraw Creator
+# Excalidraw Assistant
 
-A Python toolkit for programmatically creating and generating Excalidraw diagrams from code or natural language descriptions.
+A commandline tool for programmatically creating and generating Excalidraw diagrams from code or natural language descriptions (using the [OpenAI Agents SDK](https://platform.openai.com/docs/guides/agents))
 
 ## Features
 
-- **Programmatic Diagram Creation**: Create Excalidraw diagrams directly from Python code
 - **AI-Powered Generation**: Generate diagrams from natural language descriptions using AI
 - **Rich Element Support**: Create rectangles, diamonds, ellipses, text, lines, and arrows
-- **Element Connections**: Easily connect elements with straight or curved arrows
 - **Styling Options**: Customize colors, fill styles, stroke styles, and more
 - **Interactive Mode**: Run the agent in interactive conversation mode
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/excalidraw-creator.git
+# Clone (or fork) the repository
+git clone https://github.com/khushxxii/excalidraw-creator.git
 cd excalidraw-creator
 
 # Install dependencies
@@ -24,38 +22,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Using the Python Library Directly
-
-```python
-from excalidraw_creator import ExcalidrawCreator
-
-# Create a new drawing
-drawing = ExcalidrawCreator(background_color="#f5faff")
-
-# Add some shapes
-rect = drawing.add_rectangle(
-    150, 150, 200, 100,
-    stroke_color="#1864ab",
-    background_color="#d0ebff"
-)
-
-diamond = drawing.add_diamond(
-    450, 150, 150, 100,
-    stroke_color="#862e9c",
-    background_color="#f3d9fa"
-)
-
-# Connect with arrow
-drawing.connect_elements_with_arrow(rect, diamond)
-
-# Add text
-drawing.add_text(300, 300, "My Diagram")
-
-# Save the drawing
-drawing.save("my_diagram.excalidraw")
-```
-
-### Using the AI Agent
+### Using the commandline tool
 
 ```bash
 # Generate a diagram with AI from description
@@ -64,15 +31,6 @@ python excalidraw_agent.py "Create a flowchart showing user authentication proce
 # Run in interactive mode
 python excalidraw_agent.py --interactive
 ```
-
-## Agent Features
-
-- Break down complex drawing requests into structured plans
-- Generate Python code to create the requested diagrams
-- Support for multi-turn conversations in interactive mode
-- Example gallery accessible through the agent
-
-## API Overview
 
 ### ExcalidrawCreator Class
 
@@ -87,10 +45,6 @@ Main class for creating and managing diagrams:
 - `connect_elements_with_arrow(start_element, end_element, **kwargs)`: Connect elements
 - `connect_elements_with_curved_arrow(start_element, end_element, **kwargs)`: Connect with curved arrow
 - `save(filename)`: Save diagram to a file
-
-## Examples
-
-See `example_usage.py` for a complete example of creating a flowchart diagram programmatically.
 
 ## Contributing
 
