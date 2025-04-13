@@ -56,6 +56,12 @@ async def analyze_and_plan(description: str) -> str:
         input=ANALYSIS_PLAN_TEMPLATE.format(description=description)
     )
     
+    # Log the plan to the console
+    print("\nPlan for drawing:")
+    print("----------------")
+    print(plan_result.final_output)
+    print("----------------\n")
+    
     return plan_result.final_output
 
 
@@ -183,7 +189,6 @@ async def main():
     parser.add_argument('--interactive', action='store_true', help='Run in interactive mode')
     parser.add_argument('description', nargs='?', help='Description of what to draw')
     parser.add_argument('--output', default='diagram', help='Output filename (without extension)')
-    parser.add_argument('--show-plan', action='store_true', help='Show the planning step in the output')
     args = parser.parse_args()
     
     runner = ExcalidrawAgentRunner()
