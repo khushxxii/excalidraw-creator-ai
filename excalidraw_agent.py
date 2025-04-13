@@ -168,7 +168,7 @@ async def generate_python_script(description: str, script_name: str, plan: Optio
         python_code = re.sub(r'```$', '', python_code, flags=re.MULTILINE)
         python_code = python_code.strip()
         
-        # Ensure correct import statement 
+        # (HARDCODED) Ensure correct import statement 
         if "from excalidraw import" in python_code:
             python_code = python_code.replace("from excalidraw import", "from excalidraw_creator import")
         if "import excalidraw" in python_code:
@@ -242,11 +242,23 @@ class ExcalidrawAgentRunner:
             tools=[analyze_and_plan, generate_python_script, list_available_excalidraw_examples],
             model="gpt-4o",
         )
+        self.conversation_history = []  # Store conversation history
     
     async def process_request(self, user_input: str) -> str:
         """Process a user request and return the agent's response"""
         try:
-            result = await Runner.run(self.agent, input=user_input)
+            # If there's conversation history, use it for context
+            if self.conversation_history:
+                # Create input with conversation history plus new user message
+                new_input = self.conversation_history + [{"role": "user", "content": user_input}]
+                result = await Runner.run(self.agent, input=new_input)
+            else:
+                # First message in conversation
+                result = await Runner.run(self.agent, input=user_input)
+            
+            # Update conversation history with the result for next turn
+            self.conversation_history = result.to_input_list()
+            
             return result.final_output
         except Exception as e:
             return f"Error processing request: {str(e)}"
@@ -267,14 +279,21 @@ async def main():
     if args.interactive:
         print("Excalidraw Generator (press Ctrl+C to exit)")
         print("--------------------------------------")
+        print("Type 'reset' to start a new conversation, or 'exit'/'quit'/'q' to exit")
         
         while True:
             try:
                 description = input("\nWhat would you like to draw? ")
                 if description.lower() in ['exit', 'quit', 'q']:
                     break
-                    
-                print("\nGenerating your diagram...")
+                
+                if description.lower() == 'reset':
+                    runner.conversation_history = []
+                    print("Conversation history has been reset.")
+                    continue
+                
+                has_history = bool(runner.conversation_history)
+                print("\nGenerating your diagram..." + (" (with conversation context)" if has_history else ""))
                 print("First, analyzing and planning...")
                 response = await runner.process_request(description)
                 print("\n" + response + "\n")
