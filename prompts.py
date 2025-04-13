@@ -75,7 +75,7 @@ To create a drawing, you would typically:
 2. Add elements: rect = drawing.add_rectangle(...)
 3. Add text: text = drawing.add_text(...)
 4. Connect elements: drawing.connect_elements_with_arrow(...) or drawing.connect_elements_with_curved_arrow(...)
-5. Save the result: drawing.save("filename.excalidraw")
+5. Save the result: drawing.save("filename.excalidraw.png")
 
 If provided with a structured plan, follow it closely to implement the drawing.
 
@@ -122,7 +122,7 @@ Here's a structured plan to follow:
 The code should:
 1. Import the ExcalidrawCreator module using: from excalidraw_creator import ExcalidrawCreator
 2. Create the appropriate elements based on the plan above
-3. Save the result to a file named '{script_name}.excalidraw'
+3. Save the result to a file named '{script_name}.excalidraw.png'
 4. Be well-commented and easy to understand
 
 IMPORTANT: Return only the raw Python code without any markdown formatting or code block delimiters.
@@ -134,7 +134,7 @@ CODE_GEN_TEMPLATE_WITHOUT_PLAN = """Generate Python code that uses the Excalidra
 The code should:
 1. Import the ExcalidrawCreator module using: from excalidraw_creator import ExcalidrawCreator
 2. Create the appropriate elements based on the description
-3. Save the result to a file named '{script_name}.excalidraw'
+3. Save the result to a file named '{script_name}.excalidraw.png'
 4. Be well-commented and easy to understand
 
 IMPORTANT: Return only the raw Python code without any markdown formatting or code block delimiters.
