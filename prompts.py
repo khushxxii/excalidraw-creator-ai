@@ -37,11 +37,12 @@ The ExcalidrawCreator has these main methods:
 - add_diamond(x, y, width, height, **kwargs)
 - add_line(x1, y1, x2, y2, **kwargs)
 - add_arrow(x, y, points, **kwargs)
-- add_curved_arrow(x, y, points, **kwargs)
+- add_curved_arrow(x, y, points, start_element, end_element, start_binding_gap, end_binding_gap, **kwargs)
 - connect_elements_with_arrow(start_element, end_element, **kwargs)
 - connect_elements_with_curved_arrow(start_element, end_element, control_point_offset_x, control_point_offset_y, **kwargs)
 - add_text(x, y, text, font_family, font_size, text_align, vertical_align, **kwargs)
-- save(filename): Saves the drawing to a file
+- save(filename, pretty): Saves the drawing to a file
+- group_elements(elements, group_id): Groups elements together with a common group ID
 
 All elements support these common parameters:
 - stroke_color: Color of the outline (e.g., "#1e1e1e")
@@ -59,13 +60,18 @@ The Text element supports these additional parameters:
 - text_align: "left", "center", "right"
 - vertical_align: "top", "middle", "bottom"
 
+For the Arrow class, the points parameter is a list of points defining the arrow path:
+- The first point [0, 0] is the starting point (relative to the arrow's x,y coordinates)
+- Additional points define the path of the arrow
+- For example: [[0, 0], [50, 0], [50, 50]] creates an arrow with a right angle
+
 Curved arrows allow for smooth, non-right-angled connections with these options:
-- elbowed: Set to False for curved arrows
+- elbowed: Set to False for curved arrows (default is True for regular arrows)
 - roundness: Controls the curve style, typically {"type": 2}
-- control points: Determine the curve shape
+- The points parameter determines the curve shape, where the middle point acts as a control point
 
 To create a drawing, you would typically:
-1. Create an instance: drawing = ExcalidrawCreator()
+1. Create an instance: drawing = ExcalidrawCreator(background_color="#ffffff")
 2. Add elements: rect = drawing.add_rectangle(...)
 3. Add text: text = drawing.add_text(...)
 4. Connect elements: drawing.connect_elements_with_arrow(...) or drawing.connect_elements_with_curved_arrow(...)
